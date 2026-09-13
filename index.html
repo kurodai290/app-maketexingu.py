@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -57,12 +58,35 @@ function save(){
 }
 
 function addProduct(){
+ const nameEl = document.getElementById('name');
+ const priceEl = document.getElementById('price');
+ const descEl = document.getElementById('desc');
  const f=document.getElementById('img').files[0];
+
+ const productName = nameEl.value.trim();
+ const productPrice = priceEl.value.trim();
+ const productDesc = descEl.value.trim();
+
+ if(!productName){
+  alert('商品名を入力してください');
+  return;
+ }
+
  const finish=(img)=>{
- products.push({
-  name:name.value,price:price.value,desc:desc.value,img:img,clicks:0
- });
- save();
+  products.push({
+   name:productName,
+   price:productPrice,
+   desc:productDesc,
+   img:img,
+   clicks:0
+  });
+  save();
+
+  // 追加後に入力欄を空にする
+  nameEl.value='';
+  priceEl.value='';
+  descEl.value='';
+  document.getElementById('img').value='';
  };
  if(f){
   const r=new FileReader();
@@ -81,9 +105,10 @@ function buy(i){
 function del(i){products.splice(i,1);save();}
 
 function render(){
-  const productsEl=document.getElementById('products');
-  const dashboard=document.getElementById('dashboard');
-  productsEl.innerHTML=products.map((p,i)=>`
+ const productsEl = document.getElementById('products');
+ const dashboard = document.getElementById('dashboard');
+
+ productsEl.innerHTML=products.map((p,i)=>`
  <div class="bg-white rounded shadow overflow-hidden">
  ${p.img?`<img src="${p.img}" class="w-full h-48 object-cover">`:''}
  <div class="p-3">
