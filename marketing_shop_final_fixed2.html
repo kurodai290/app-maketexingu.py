@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>マーケティングショップ完成版</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head><body class="bg-slate-100">
+<div class="bg-yellow-100 p-4 text-center font-bold">このサイトはマーケティング用です。実際のお金は使わず、架空のお金でシミュレーションします。</div>
+
+<input id="secret" style="position:fixed;left:-9999px">
+
+<div class="max-w-6xl mx-auto p-4">
+<h1 class="text-3xl font-bold mb-4">🛒 マーケティングショップ</h1>
+
+<div id="admin" class="hidden bg-white p-4 rounded shadow mb-4">
+<h2 class="font-bold text-xl mb-2">管理者モード</h2>
+<input id="name" placeholder="商品名" class="border p-2 m-1">
+<input id="price" placeholder="価格" class="border p-2 m-1">
+<input id="desc" placeholder="説明" class="border p-2 m-1">
+<input id="img" type="file" accept="image/*" class="border p-2 m-1">
+<button onclick="addProduct()" class="bg-blue-600 text-white px-3 py-2 rounded">商品追加</button>
+<div id="dashboard" class="mt-4"></div>
+</div>
+
+<div id="products" class="grid md:grid-cols-3 gap-4"></div>
+</div>
+
+<script>
+const userId=localStorage.userId||(localStorage.userId='user-'+Math.random().toString(36).slice(2,8));
+let products=JSON.parse(localStorage.products||'[]');
+let purchases=JSON.parse(localStorage.purchases||'[]');
+
+if(products.length===0){
+ products=[{name:'イヤホン',price:'6980円',desc:'人気商品',img:'',clicks:0}];
+}
+
+document.addEventListener('click',()=>{
+ if(!document.getElementById('admin').classList.contains('hidden')) return;
+ document.getElementById('secret').focus();
+});
+
+document.getElementById('secret').addEventListener('keydown',e=>{
+ if(e.key!=='Enter') return;
+ const v=e.target.value.toLowerCase().trim();
+ if(v==='kurodai') document.getElementById('admin').classList.remove('hidden');
+ if(v==='closeadmin') document.getElementById('admin').classList.add('hidden');
+ e.target.value='';
+});
+
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape') document.getElementById('admin').classList.add('hidden');
+});
+
+function save(){
+ localStorage.products=JSON.stringify(products);
+ localStorage.purchases=JSON.stringify(purchases);
+ render();
+}
+
+function addProduct(){
+ const nameEl = document.getElementById('name');
+ const priceEl = document.getElementById('price');
+ const descEl = document.getElementById('desc');
+ const f=document.getElementById('img').files[0];
+
+ const productName = nameEl.value.trim();
+ const productPrice = priceEl.value.trim();
+ const productDesc = descEl.value.trim();
+
+ if(!productName){
+  alert('商品名を入力してください');
+  return;
+ }
+
+ const finish=(img)=>{
+  products.push({
+   name:productName,
+   price:productPrice,
+   desc:productDesc,
+   img:img,
+   clicks:0
+  });
+  save();
+
+  // 追加後に入力欄を空にする
+  nameEl.value='';
+  priceEl.value='';
+  descEl.value='';
+  document.getElementById('img').value='';
+ };
+ if(f){
+  const r=new FileReader();
+  r.onload=e=>finish(e.target.result);
+  r.readAsDataURL(f);
+ } else finish('');
+}
+
+function buy(i){
+ products[i].clicks++;
+ purchases.push({user:userId,product:products[i].name,time:new Date().toLocaleString()});
+ alert(products[i].name+' を購入しました（シミュレーション）');
+ save();
+}
+
+function del(i){products.splice(i,1);save();}
+
+function render(){
+ const productsEl = document.getElementById('products');
+ const dashboard = document.getElementById('dashboard');
+
+ productsEl.innerHTML=products.map((p,i)=>`
+ <div class="bg-white rounded shadow overflow-hidden">
+ ${p.img?`<img src="${p.img}" class="w-full h-48 object-cover">`:''}
+ <div class="p-3">
+ <h3 class="font-bold">${p.name}</h3>
+ <p>${p.price}</p>
+ <p>${p.desc}</p>
+ <button onclick="buy(${i})" class="bg-green-600 text-white w-full py-2 rounded mt-2">疑似購入</button>
+ <button onclick="del(${i})" class="bg-red-500 text-white w-full py-2 rounded mt-2">削除</button>
+ </div></div>`).join('');
+
+ const rank=[...products].sort((a,b)=>b.clicks-a.clicks);
+ dashboard.innerHTML='<h3 class="font-bold">ランキング</h3>'+
+ rank.map((p,n)=>`${n+1}. ${p.name} (${p.clicks}回)`).join('<br>')+
+ '<hr class="my-2"><h3 class="font-bold">購入履歴</h3>'+
+ purchases.slice().reverse().slice(0,20).map(x=>`${x.user} → ${x.product}`).join('<br>');
+}
+render();
+</script>
+</body></html>
