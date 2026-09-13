@@ -21,11 +21,19 @@
 <div id="dashboard" class="mt-4"></div>
 </div>
 
+<div id="moneyDisplay" class="bg-white p-4 rounded shadow mb-4 text-xl font-bold">
+持ち金：100,000円
+</div>
 <div id="products" class="grid md:grid-cols-3 gap-4"></div>
 </div>
 
 <script>
 const userId=localStorage.userId||(localStorage.userId='user-'+Math.random().toString(36).slice(2,8));
+const STARTING_MONEY = 100000;
+
+// サイトを開くたびに持ち金を10万円へリセット
+let money = STARTING_MONEY;
+
 let products=JSON.parse(localStorage.products||'[]');
 let purchases=JSON.parse(localStorage.purchases||'[]');
 
@@ -41,13 +49,13 @@ document.addEventListener('click',()=>{
 document.getElementById('secret').addEventListener('keydown',e=>{
  if(e.key!=='Enter') return;
  const v=e.target.value.toLowerCase().trim();
- if(v==='kurodai') document.getElementById('admin').classList.remove('hidden');
- if(v==='closeadmin') document.getElementById('admin').classList.add('hidden');
+ if(v==='kurodai'){isAdmin=true;document.getElementById('admin').classList.remove('hidden');render();}
+ if(v==='closeadmin'){isAdmin=false;document.getElementById('admin').classList.add('hidden');render();}
  e.target.value='';
 });
 
 document.addEventListener('keydown',e=>{
- if(e.key==='Escape') document.getElementById('admin').classList.add('hidden');
+ if(e.key==='Escape'){isAdmin=false;document.getElementById('admin').classList.add('hidden');render();}
 });
 
 function save(){
@@ -95,17 +103,47 @@ function addProduct(){
 }
 
 function buy(i){
+ const rawPrice = String(products[i].price).replace(/[^0-9]/g,'');
+ const price = Number(rawPrice);
+
+ if(!Number.isFinite(price) || price <= 0){
+  alert('この商品の価格が正しく設定されていません。');
+  return;
+ }
+
+ // 所持金以上の商品は購入できない
+ if(price > money){
+  alert('持ち金が足りません。\n現在の持ち金: '+money.toLocaleString()+'円');
+  return;
+ }
+
+ money -= price;
+
+ // 持ち金がマイナスにならないようにする
+ if(money < 0) money = 0;
+
  products[i].clicks++;
- purchases.push({user:userId,product:products[i].name,time:new Date().toLocaleString()});
- alert(products[i].name+' を購入しました（シミュレーション）');
+ purchases.push({
+  user:userId,
+  product:products[i].name,
+  price:price,
+  time:new Date().toLocaleString()
+ });
+
+ alert(products[i].name+' を購入しました（シミュレーション）\n残りの持ち金: '+money.toLocaleString()+'円');
  save();
 }
 
 function del(i){products.splice(i,1);save();}
 
+let isAdmin=false;
+
 function render(){
  const productsEl = document.getElementById('products');
  const dashboard = document.getElementById('dashboard');
+ const moneyDisplay = document.getElementById('moneyDisplay');
+
+ moneyDisplay.textContent = '持ち金：'+money.toLocaleString()+'円';
 
  productsEl.innerHTML=products.map((p,i)=>`
  <div class="bg-white rounded shadow overflow-hidden">
@@ -115,14 +153,16 @@ function render(){
  <p>${p.price}</p>
  <p>${p.desc}</p>
  <button onclick="buy(${i})" class="bg-green-600 text-white w-full py-2 rounded mt-2">疑似購入</button>
- <button onclick="del(${i})" class="bg-red-500 text-white w-full py-2 rounded mt-2">削除</button>
+ ${isAdmin?`<button onclick="del(${i})" class="bg-red-500 text-white w-full py-2 rounded mt-2">削除</button>`:""}
  </div></div>`).join('');
 
  const rank=[...products].sort((a,b)=>b.clicks-a.clicks);
  dashboard.innerHTML='<h3 class="font-bold">ランキング</h3>'+
  rank.map((p,n)=>`${n+1}. ${p.name} (${p.clicks}回)`).join('<br>')+
  '<hr class="my-2"><h3 class="font-bold">購入履歴</h3>'+
- purchases.slice().reverse().slice(0,20).map(x=>`${x.user} → ${x.product}`).join('<br>');
+ purchases.slice().reverse().slice(0,20).map(x=>`${x.user} → ${x.product} (${Number(x.price||0).toLocaleString()}円)`).join('<br>')+
+  '<hr class="my-2"><h3 class="font-bold">あなたの使用額</h3>'+
+  purchases.filter(x=>x.user===userId).reduce((s,x)=>s+Number(x.price||0),0).toLocaleString()+'円 / 100,000円';
 }
 render();
 </script>
